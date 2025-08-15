@@ -2,14 +2,6 @@ exports.handler = async function(event, context) {
   const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY;
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
 
-  // --- NEW DEBUGGING LINE TO VERIFY THE KEY ---
-  if (ABSTRACT_API_KEY) {
-    console.log(`Verifying API Key: Starts with '${ABSTRACT_API_KEY.substring(0, 4)}', ends with '${ABSTRACT_API_KEY.substring(ABSTRACT_API_KEY.length - 4)}'`);
-  } else {
-    console.log('Verification failed: ABSTRACT_API_KEY environment variable is not found.');
-  }
-  // --- END OF DEBUGGING LINE ---
-
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -22,21 +14,23 @@ exports.handler = async function(event, context) {
       return { statusCode: 400, body: JSON.stringify({ message: 'Email is a required field.' }) };
     }
 
-    const validationUrl = `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${userEmail}`;
+    // --- FIX #1: Use the correct "Email Reputation" API endpoint ---
+    const reputationUrl = `https://emailreputation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${userEmail}`;
     
-    const validationResponse = await fetch(validationUrl);
-    const validationData = await validationResponse.json();
+    const reputationResponse = await fetch(reputationUrl);
+    const reputationData = await reputationResponse.json();
 
-    console.log('Abstract API Full Response:', JSON.stringify(validationData, null, 2));
-
-    if (validationData.deliverability !== 'DELIVERABLE') {
-      console.log('Blocked invalid email:', userEmail);
+    // --- FIX #2: Check the 'spam' field from the Reputation API's response ---
+    // If the API flags the email as spam, we reject the request.
+    if (reputationData.spam === true) {
+      console.log('Blocked spam email:', userEmail);
       return { 
         statusCode: 400,
-        body: JSON.stringify({ message: 'Email address appears to be invalid or undeliverable.' }) 
+        body: JSON.stringify({ message: 'This email address was flagged as suspicious.' }) 
       };
     }
 
+    // If validation passes, we send the data to Google Script.
     const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
