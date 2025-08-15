@@ -41,7 +41,8 @@ label {
     color: #aaa;
 }
 
-input, select {
+/* Add textarea to this list */
+input, select, textarea {
     width: 100%;
     padding: 0.8rem;
     background-color: #222;
@@ -50,7 +51,10 @@ input, select {
     font-family: inherit;
     font-size: 1rem;
     box-sizing: border-box; /* Ensures padding doesn't affect width */
+    /* This will make the textarea resize vertically but not horizontally */
+    resize: vertical; 
 }
+
 
 input:focus, select:focus {
     outline: none;
