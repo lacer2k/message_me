@@ -2,6 +2,14 @@ exports.handler = async function(event, context) {
   const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY;
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
 
+  // --- NEW DEBUGGING LINE TO VERIFY THE KEY ---
+  if (ABSTRACT_API_KEY) {
+    console.log(`Verifying API Key: Starts with '${ABSTRACT_API_KEY.substring(0, 4)}', ends with '${ABSTRACT_API_KEY.substring(ABSTRACT_API_KEY.length - 4)}'`);
+  } else {
+    console.log('Verification failed: ABSTRACT_API_KEY environment variable is not found.');
+  }
+  // --- END OF DEBUGGING LINE ---
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -19,9 +27,7 @@ exports.handler = async function(event, context) {
     const validationResponse = await fetch(validationUrl);
     const validationData = await validationResponse.json();
 
-    // --- THIS IS THE NEW LINE FOR DEBUGGING ---
     console.log('Abstract API Full Response:', JSON.stringify(validationData, null, 2));
-    // --- END OF NEW LINE ---
 
     if (validationData.deliverability !== 'DELIVERABLE') {
       console.log('Blocked invalid email:', userEmail);
