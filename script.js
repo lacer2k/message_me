@@ -16,11 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const formObject = Object.fromEntries(formData.entries());
 
-        // --- KEY CHANGE IS HERE ---
-        // We now build the payload with the new fields.
-        // Optional fields use `|| ''` to send an empty string if left blank.
         const payload = {
-            title: 'New Contact Form Submission', // Updated title for clarity
+            title: 'New Contact Form Submission',
             name: formObject.name,
             surname: formObject.surname,
             mail: formObject.mail,
@@ -28,20 +25,22 @@ document.addEventListener('DOMContentLoaded', () => {
             telegram: formObject.telegram || '',
             reason: formObject.reason
         };
-        // --- END OF KEY CHANGE ---
 
         fetch(proxyUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })
-        .then(response => {
+        .then(async response => {
+            // --- KEY CHANGE IS HERE ---
+            // If the response is not OK, we try to get the specific error message from our function.
             if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
+                const errorData = await response.json();
+                // Use the specific message from our Netlify function, or a generic one.
+                throw new Error(errorData.message || `Server responded with status: ${response.status}`);
             }
             return response.json();
+            // --- END OF KEY CHANGE ---
         })
         .then(data => {
             statusDiv.textContent = 'Success! Your message has been sent.';
@@ -50,7 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error('Error:', error);
-            statusDiv.textContent = 'Error: Could not send message. Please try again.';
+            // Now this will display our custom error message (e.g., "Email address appears to be invalid...")
+            statusDiv.textContent = `Error: ${error.message}`;
             statusDiv.className = 'error';
         })
         .finally(() => {
