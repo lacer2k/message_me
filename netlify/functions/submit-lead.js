@@ -1,6 +1,4 @@
-// This is the updated server-side proxy function with email validation.
 exports.handler = async function(event, context) {
-  // Get our secret API key from the environment variables.
   const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY;
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
 
@@ -12,7 +10,6 @@ exports.handler = async function(event, context) {
     const payload = JSON.parse(event.body);
     const userEmail = payload.mail;
 
-    // --- START OF NEW VALIDATION LOGIC ---
     if (!userEmail) {
       return { statusCode: 400, body: JSON.stringify({ message: 'Email is a required field.' }) };
     }
@@ -22,19 +19,18 @@ exports.handler = async function(event, context) {
     const validationResponse = await fetch(validationUrl);
     const validationData = await validationResponse.json();
 
-    // We check the 'DELIVERABILITY' status from the API.
-    // If it's not DELIVERABLE, we reject the request.
+    // --- THIS IS THE NEW LINE FOR DEBUGGING ---
+    console.log('Abstract API Full Response:', JSON.stringify(validationData, null, 2));
+    // --- END OF NEW LINE ---
+
     if (validationData.deliverability !== 'DELIVERABLE') {
-      console.log('Blocked invalid email:', userEmail, 'Reason:', validationData.quality_score);
+      console.log('Blocked invalid email:', userEmail);
       return { 
-        statusCode: 400, // 400 means "Bad Request"
+        statusCode: 400,
         body: JSON.stringify({ message: 'Email address appears to be invalid or undeliverable.' }) 
       };
     }
-    // --- END OF NEW VALIDATION LOGIC ---
 
-
-    // If validation passes, we proceed to send the data to Google Script.
     const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
