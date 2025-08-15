@@ -1,39 +1,56 @@
-// This is the server-side proxy function.
+// This is the updated server-side proxy function with email validation.
 exports.handler = async function(event, context) {
-  // The Google Apps Script URL is now hidden on the server.
+  // Get our secret API key from the environment variables.
+  const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY;
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
 
-  // We only accept POST requests.
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
   try {
-    // The browser sends data as a string, so we parse it into a JavaScript object.
     const payload = JSON.parse(event.body);
+    const userEmail = payload.mail;
 
-    // This is our server-to-server request. It behaves exactly like curl.
-    const response = await fetch(GOOGLE_SCRIPT_URL, {
+    // --- START OF NEW VALIDATION LOGIC ---
+    if (!userEmail) {
+      return { statusCode: 400, body: JSON.stringify({ message: 'Email is a required field.' }) };
+    }
+
+    const validationUrl = `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${userEmail}`;
+    
+    const validationResponse = await fetch(validationUrl);
+    const validationData = await validationResponse.json();
+
+    // We check the 'DELIVERABILITY' status from the API.
+    // If it's not DELIVERABLE, we reject the request.
+    if (validationData.deliverability !== 'DELIVERABLE') {
+      console.log('Blocked invalid email:', userEmail, 'Reason:', validationData.quality_score);
+      return { 
+        statusCode: 400, // 400 means "Bad Request"
+        body: JSON.stringify({ message: 'Email address appears to be invalid or undeliverable.' }) 
+      };
+    }
+    // --- END OF NEW VALIDATION LOGIC ---
+
+
+    // If validation passes, we proceed to send the data to Google Script.
+    const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-        // If Google's script returns an error, we forward it.
-        return { statusCode: response.status, body: response.statusText };
+    if (!googleResponse.ok) {
+        return { statusCode: googleResponse.status, body: googleResponse.statusText };
     }
     
-    // Success! We send a success response back to the browser.
     return {
       statusCode: 200,
       body: JSON.stringify({ message: 'Lead submitted successfully' }),
     };
 
   } catch (error) {
-    // Handle any errors.
     return { statusCode: 500, body: `Server error: ${error.message}` };
   }
 };
