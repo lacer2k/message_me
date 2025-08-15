@@ -3,11 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submitButton');
     const statusDiv = document.getElementById('formStatus');
 
-    // Your Google Apps Script Webhook URL
     const webhookUrl = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
 
     form.addEventListener('submit', function(event) {
-        event.preventDefault(); // Stop the form from reloading the page
+        event.preventDefault();
 
         submitButton.disabled = true;
         submitButton.textContent = 'Submitting...';
@@ -17,26 +16,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const formObject = Object.fromEntries(formData.entries());
 
-        const payload = {
+        // Combine the fixed title with the data from the form
+        const dataToSend = {
             title: 'New Lead',
             name: formObject.name,
             email: formObject.email,
             budget: formObject.budget
         };
 
-        // The Fetch Request with the FIX
+        // This is the key change: We convert our object into a URL-encoded string.
+        // e.g., "title=New%20Lead&name=Mario%20Rossi&..."
+        const urlEncodedData = new URLSearchParams(dataToSend);
+
         fetch(webhookUrl, {
             method: 'POST',
-            // We no longer need 'mode: no-cors'
-            // We change the Content-Type to make it a "simple request"
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
+                // We explicitly set the Content-Type to what a normal form would send.
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: JSON.stringify(payload), // The body is still a JSON string
+            // The body is now the URL-encoded data.
+            body: urlEncodedData,
         })
         .then(response => {
-            // Even though we get a response, we can't read its content from a different domain.
-            // But getting here means the data was sent successfully.
             statusDiv.textContent = 'Success! Lead submitted.';
             statusDiv.className = 'success';
             form.reset();
