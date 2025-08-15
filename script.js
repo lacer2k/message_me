@@ -9,38 +9,37 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', function(event) {
         event.preventDefault(); // Stop the form from reloading the page
 
-        // Disable button and show sending status
         submitButton.disabled = true;
         submitButton.textContent = 'Submitting...';
         statusDiv.textContent = '';
         statusDiv.className = '';
 
-        // Get form data
         const formData = new FormData(form);
         const formObject = Object.fromEntries(formData.entries());
 
-        // Construct the final JSON payload
         const payload = {
-            title: 'New Lead', // The title is hard-coded as requested
+            title: 'New Lead',
             name: formObject.name,
             email: formObject.email,
             budget: formObject.budget
         };
 
-        // Send the data to the webhook
+        // The Fetch Request with the FIX
         fetch(webhookUrl, {
             method: 'POST',
-            mode: 'no-cors', // IMPORTANT: Use 'no-cors' to avoid CORS issues with Google Scripts from a browser
+            // We no longer need 'mode: no-cors'
+            // We change the Content-Type to make it a "simple request"
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain;charset=utf-8',
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payload), // The body is still a JSON string
         })
-        .then(() => {
-            // Because of 'no-cors', we can't read the response. We assume success if no network error occurs.
+        .then(response => {
+            // Even though we get a response, we can't read its content from a different domain.
+            // But getting here means the data was sent successfully.
             statusDiv.textContent = 'Success! Lead submitted.';
             statusDiv.className = 'success';
-            form.reset(); // Clear the form fields
+            form.reset();
         })
         .catch(error => {
             console.error('Error:', error);
@@ -48,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             statusDiv.className = 'error';
         })
         .finally(() => {
-            // Re-enable the button after the request is complete
             submitButton.disabled = false;
             submitButton.textContent = 'Submit ->';
         });
