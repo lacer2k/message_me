@@ -1,10 +1,8 @@
-// This is the updated client-side script.
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('leadForm');
     const submitButton = document.getElementById('submitButton');
     const statusDiv = document.getElementById('formStatus');
 
-    // The ONLY change is this URL. It now points to our own proxy function.
     const proxyUrl = '/.netlify/functions/submit-lead';
 
     form.addEventListener('submit', function(event) {
@@ -18,14 +16,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const formObject = Object.fromEntries(formData.entries());
 
+        // --- KEY CHANGE IS HERE ---
+        // We now build the payload with the new fields.
+        // Optional fields use `|| ''` to send an empty string if left blank.
         const payload = {
-            title: 'New Lead',
+            title: 'New Contact Form Submission', // Updated title for clarity
             name: formObject.name,
-            email: formObject.email,
-            budget: formObject.budget
+            surname: formObject.surname,
+            mail: formObject.mail,
+            whatsapp: formObject.whatsapp || '',
+            telegram: formObject.telegram || '',
+            reason: formObject.reason
         };
+        // --- END OF KEY CHANGE ---
 
-        // This fetch request now goes to our same-domain proxy. No CORS issues!
         fetch(proxyUrl, {
             method: 'POST',
             headers: {
@@ -35,19 +39,18 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(response => {
             if (!response.ok) {
-                // If our proxy returns an error, we'll show it.
                 throw new Error(`Server responded with status: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
-            statusDiv.textContent = 'Success! Lead submitted.';
+            statusDiv.textContent = 'Success! Your message has been sent.';
             statusDiv.className = 'success';
             form.reset();
         })
         .catch(error => {
             console.error('Error:', error);
-            statusDiv.textContent = 'Error: Could not submit lead. Please try again.';
+            statusDiv.textContent = 'Error: Could not send message. Please try again.';
             statusDiv.className = 'error';
         })
         .finally(() => {
