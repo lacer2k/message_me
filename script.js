@@ -1,9 +1,11 @@
+// This is the updated client-side script.
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('leadForm');
     const submitButton = document.getElementById('submitButton');
     const statusDiv = document.getElementById('formStatus');
 
-    const webhookUrl = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
+    // The ONLY change is this URL. It now points to our own proxy function.
+    const proxyUrl = '/.netlify/functions/submit-lead';
 
     form.addEventListener('submit', function(event) {
         event.preventDefault();
@@ -16,28 +18,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const formObject = Object.fromEntries(formData.entries());
 
-        // Combine the fixed title with the data from the form
-        const dataToSend = {
+        const payload = {
             title: 'New Lead',
             name: formObject.name,
             email: formObject.email,
             budget: formObject.budget
         };
 
-        // This is the key change: We convert our object into a URL-encoded string.
-        // e.g., "title=New%20Lead&name=Mario%20Rossi&..."
-        const urlEncodedData = new URLSearchParams(dataToSend);
-
-        fetch(webhookUrl, {
+        // This fetch request now goes to our same-domain proxy. No CORS issues!
+        fetch(proxyUrl, {
             method: 'POST',
             headers: {
-                // We explicitly set the Content-Type to what a normal form would send.
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
             },
-            // The body is now the URL-encoded data.
-            body: urlEncodedData,
+            body: JSON.stringify(payload),
         })
         .then(response => {
+            if (!response.ok) {
+                // If our proxy returns an error, we'll show it.
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
             statusDiv.textContent = 'Success! Lead submitted.';
             statusDiv.className = 'success';
             form.reset();
