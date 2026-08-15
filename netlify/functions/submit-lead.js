@@ -1,7 +1,15 @@
 exports.handler = async function(event, context) {
   const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY;
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8mPlEiXfPQFG5ZiNBUgk-VIbLXjZqreRiYEdB5VXzZR9Y07Mo_AdzFVnKTyB91OAxrg/exec';
+  const GOOGLE_SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || '').trim();
   const WORD_LIMIT = 800;
+
+  if (!GOOGLE_SCRIPT_URL) {
+    console.error('GOOGLE_SCRIPT_URL is not set');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Server misconfigured: GOOGLE_SCRIPT_URL missing' }),
+    };
+  }
 
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
